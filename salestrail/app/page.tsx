@@ -1,7 +1,6 @@
 'use client';
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { parseStringPromise } from "xml2js";
 import SaleCard from "@/components/SaleCard";
 
 // Simple preset of supported cities with coordinates for weather lookup
@@ -29,7 +28,12 @@ export default function Home() {
         setLoading(true);
         setError(null);
         const rssUrl = encodeURIComponent(`https://${city}.craigslist.org/search/gms?format=rss`);
-        const res = await fetch(`${proxyBase}/rss?url=${rssUrl}`);
+        // 1) Prefer cached server API (uses Supabase cache)
+        let res = await fetch(`/api/rss-cached?city=${city}`);
+        if (!res.ok) {
+          // 2) Fallback to custom proxy base
+          res = await fetch(`${proxyBase}/rss?url=${rssUrl}`);
+        }
         if (!res.ok) throw new Error("Failed to fetch RSS");
         const data = await res.json();
         if (!Array.isArray(data)) throw new Error("No sales found");

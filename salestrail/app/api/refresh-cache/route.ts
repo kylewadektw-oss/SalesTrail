@@ -1,0 +1,52 @@
+import { NextRequest } from 'next/server'
+import { parseStringPromise } from 'xml2js'
+import { cacheRSS } from '@/lib/rssCache'
+
+const ALLOWED = (process.env.NEXT_PUBLIC_ALLOWED_CITIES || 'hartford,newyork,boston,providence')
+  .split(',')
+  .map(c => c.trim().toLowerCase())
+  .filter(Boolean)
+
+export async function POST(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const provided = searchParams.get('secret') || req.headers.get('x-api-key') || ''
+  const expected = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  if (!expected || provided !== expected) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+  }
+
+  const citiesParam = searchParams.get('cities')
+  const cities = (citiesParam ? citiesParam.split(',') : ALLOWED).map(c => c.trim().toLowerCase()).filter(Boolean)
+
+  const results: Record<string, { ok: boolean; count?: number; error?: string }> = {}
+
+  await Promise.all(cities.map(async (city) => {
+    try {
+      const url = `https://${city}.craigslist.org/search/gms?format=rss`
+      const rssRes = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; SaleTrailBot/1.0; +https://saletrail.app)',
+          'Accept': 'application/rss+xml,application/xml',
+        },
+      })
+      if (!rssRes.ok) throw new Error(`Fetch failed ${rssRes.status}`)
+      const xml = await rssRes.text()
+      const parsed = await parseStringPromise(xml, { explicitArray: false })
+      const items = parsed?.rss?.channel?.item || []
+      const sales = (Array.isArray(items) ? items : [items]).filter(Boolean).map((item: any) => ({
+        title: item.title,
+        description: item.description,
+        link: item.link,
+        pubDate: item.pubDate,
+      }))
+      await cacheRSS(`rss:${city}`, sales)
+      results[city] = { ok: true, count: sales.length }
+    } catch (e: any) {
+      results[city] = { ok: false, error: e.message }
+    }
+  }))
+
+  return new Response(JSON.stringify({ results }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
+
+export const GET = POST // allow GET for manual testing
