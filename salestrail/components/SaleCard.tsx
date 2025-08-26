@@ -8,7 +8,9 @@ type Sale = {
   start_date: string;
 };
 
-export default function SaleCard({ sale }: { sale: Sale }) {
+type Props = { sale: Sale; weather?: string };
+
+export default function SaleCard({ sale, weather }: Props) {
   return (
     <div className="border rounded p-4 bg-white shadow-sm">
       <h3 className="font-semibold text-lg mb-1">
@@ -17,6 +19,9 @@ export default function SaleCard({ sale }: { sale: Sale }) {
         </a>
       </h3>
       <p className="text-sm text-gray-600 mb-1">{sale.start_date}</p>
+      {weather && (
+        <p className="text-xs text-gray-500 mb-1">Weather: {weather}</p>
+      )}
       <p className="text-gray-700 text-sm mb-2">{sale.description}</p>
     </div>
   );
