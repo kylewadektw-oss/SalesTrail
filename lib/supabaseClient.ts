@@ -1,15 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-
-// Use safe lookups (avoid `!` non-null assertions which trigger zsh history expansion
-// if the snippet is accidentally pasted into a shell)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-// Support either the standard anon key name or your custom publishable name
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error(
-    'Missing Supabase environment variables. Please set NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY in .env.local.'
-  )
-}
-
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// @ts-nocheck
+// This file was moved into the Next app at `salestrail/lib/supabaseClient.ts`.
+// Keep a small re-export here to avoid duplicate-file errors in editors that
+// index the workspace root.
+export { supabase } from '../salestrail/lib/supabaseClient'
