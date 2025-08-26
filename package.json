@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix ./salestrail run dev",
-    "build": "npm --prefix ./salestrail run build",
+    "build": "npm --prefix ./salestrail install && npm --prefix ./salestrail run build",
     "start": "npm --prefix ./salestrail run start",
     "lint": "npm --prefix ./salestrail run lint"
   }
