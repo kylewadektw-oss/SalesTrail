@@ -1,13 +1,18 @@
 import Link from "next/link";
-import Image from "next/image";
+import { fetchCraigslistRSS } from "@/lib/fetchRSS";
+import SaleCard from "@/components/SaleCard";
 
-export default function Home() {
+export default async function Home() {
+  const sales = await fetchCraigslistRSS(
+    "https://hartford.craigslist.org/search/gms?format=rss"
+  );
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-white">
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-blue-50 to-blue-100 py-12 px-4 text-center">
         <h1 className="text-4xl font-bold mb-2">SaleTrail</h1>
-        <p className="text-xl mb-4">Find & plan your weekend sales — faster.</p>
+        <p className="text-xl mb-4">Find &amp; plan your weekend sales — faster.</p>
         <p className="text-gray-600 mb-6">
           Discover local yard, estate, and garage sales. Plan your route, check the
           weather, and never miss a deal!
@@ -52,35 +57,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Highlighted Sales (static MVP) */}
+      {/* Highlighted Sales (dynamic from RSS) */}
       <section className="max-w-3xl mx-auto py-10 px-4">
         <h2 className="text-2xl font-bold mb-4">Upcoming Sales</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          {/* SaleCard mockups */}
-          <div className="border rounded p-4 bg-white shadow-sm">
-            <h3 className="font-semibold text-lg mb-1">123 Main St</h3>
-            <p className="text-sm text-gray-600 mb-1">Sat, Aug 30 • 9am-2pm</p>
-            <p className="text-xs text-blue-700 mb-2">Sunny ☀️ 78°F</p>
-            <p className="text-gray-700 text-sm">
-              Multi-family yard sale, lots of kids' items!
-            </p>
-          </div>
-          <div className="border rounded p-4 bg-white shadow-sm">
-            <h3 className="font-semibold text-lg mb-1">456 Oak Ave</h3>
-            <p className="text-sm text-gray-600 mb-1">Sun, Sep 1 • 8am-1pm</p>
-            <p className="text-xs text-blue-700 mb-2">Partly Cloudy ⛅ 74°F</p>
-            <p className="text-gray-700 text-sm">
-              Estate sale: furniture, antiques, tools.
-            </p>
-          </div>
-          <div className="border rounded p-4 bg-white shadow-sm">
-            <h3 className="font-semibold text-lg mb-1">789 Pine Rd</h3>
-            <p className="text-sm text-gray-600 mb-1">Sat, Aug 30 • 10am-4pm</p>
-            <p className="text-xs text-blue-700 mb-2">Clear ☀️ 80°F</p>
-            <p className="text-gray-700 text-sm">
-              Garage sale: electronics, bikes, books.
-            </p>
-          </div>
+          {sales.slice(0, 3).map((sale: any, i: number) => (
+            <SaleCard
+              key={i}
+              sale={{
+                id: i.toString(),
+                title: sale.title,
+                description: sale.description,
+                url: sale.link,
+                start_date: sale.pubDate,
+              }}
+            />
+          ))}
         </div>
         <div className="text-right mt-2">
           <Link
