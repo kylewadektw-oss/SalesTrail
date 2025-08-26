@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 const navLinks = [
+  { href: "/", label: "Home" },
   { href: "/feed", label: "Feed" },
   { href: "/map", label: "Map" },
   { href: "/route", label: "Route Planner" },
