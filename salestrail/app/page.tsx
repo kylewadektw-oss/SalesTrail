@@ -1,11 +1,30 @@
+'use client';
 import Link from "next/link";
-import { fetchCraigslistRSS } from "@/lib/fetchRSS";
+import { useEffect, useState } from "react";
 import SaleCard from "@/components/SaleCard";
 
-export default async function Home() {
-  const sales = await fetchCraigslistRSS(
-    "https://hartford.craigslist.org/search/gms?format=rss"
-  );
+export default function Home() {
+  const [sales, setSales] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchSales() {
+      try {
+        const res = await fetch(
+          "/api/rss?url=https://hartford.craigslist.org/search/gms?format=rss"
+        );
+        if (!res.ok) throw new Error("Failed to fetch RSS");
+        const data = await res.json();
+        setSales(data);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSales();
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-white">
@@ -60,6 +79,8 @@ export default async function Home() {
       {/* Highlighted Sales (dynamic from RSS) */}
       <section className="max-w-3xl mx-auto py-10 px-4">
         <h2 className="text-2xl font-bold mb-4">Upcoming Sales</h2>
+        {loading && <div className="text-gray-500">Loading sales...</div>}
+        {error && <div className="text-red-600">{error}</div>}
         <div className="grid gap-4 md:grid-cols-3">
           {sales.slice(0, 3).map((sale: any, i: number) => (
             <SaleCard
