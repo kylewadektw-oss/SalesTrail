@@ -1,102 +1,148 @@
+import Link from "next/link";
 import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen flex flex-col font-sans bg-white">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-blue-50 to-blue-100 py-12 px-4 text-center">
+        <h1 className="text-4xl font-bold mb-2">SaleTrail</h1>
+        <p className="text-xl mb-4">Find & plan your weekend sales — faster.</p>
+        <p className="text-gray-600 mb-6">
+          Discover local yard, estate, and garage sales. Plan your route, check the
+          weather, and never miss a deal!
+        </p>
+        <form
+          action="/feed"
+          method="get"
+          className="flex justify-center gap-2 max-w-md mx-auto mb-4"
+        >
+          <input
+            type="text"
+            name="q"
+            placeholder="Search by location or keyword..."
+            className="rounded-l px-4 py-2 border border-gray-300 w-2/3 focus:outline-blue-400"
+          />
+          <button
+            type="submit"
+            className="rounded-r bg-blue-600 text-white px-4 py-2 font-semibold hover:bg-blue-700"
+          >
+            Search
+          </button>
+        </form>
+        <div className="flex flex-wrap justify-center gap-4 mt-4">
+          <Link
+            href="/feed"
+            className="bg-blue-600 text-white px-5 py-2 rounded font-semibold hover:bg-blue-700"
+          >
+            Browse Sales
+          </Link>
+          <Link
+            href="/map"
+            className="bg-green-600 text-white px-5 py-2 rounded font-semibold hover:bg-green-700"
+          >
+            View Map
+          </Link>
+          <Link
+            href="/route"
+            className="bg-purple-600 text-white px-5 py-2 rounded font-semibold hover:bg-purple-700"
+          >
+            Plan a Route
+          </Link>
+        </div>
+      </section>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
+      {/* Highlighted Sales (static MVP) */}
+      <section className="max-w-3xl mx-auto py-10 px-4">
+        <h2 className="text-2xl font-bold mb-4">Upcoming Sales</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* SaleCard mockups */}
+          <div className="border rounded p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-lg mb-1">123 Main St</h3>
+            <p className="text-sm text-gray-600 mb-1">Sat, Aug 30 • 9am-2pm</p>
+            <p className="text-xs text-blue-700 mb-2">Sunny ☀️ 78°F</p>
+            <p className="text-gray-700 text-sm">
+              Multi-family yard sale, lots of kids' items!
+            </p>
+          </div>
+          <div className="border rounded p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-lg mb-1">456 Oak Ave</h3>
+            <p className="text-sm text-gray-600 mb-1">Sun, Sep 1 • 8am-1pm</p>
+            <p className="text-xs text-blue-700 mb-2">Partly Cloudy ⛅ 74°F</p>
+            <p className="text-gray-700 text-sm">
+              Estate sale: furniture, antiques, tools.
+            </p>
+          </div>
+          <div className="border rounded p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-lg mb-1">789 Pine Rd</h3>
+            <p className="text-sm text-gray-600 mb-1">Sat, Aug 30 • 10am-4pm</p>
+            <p className="text-xs text-blue-700 mb-2">Clear ☀️ 80°F</p>
+            <p className="text-gray-700 text-sm">
+              Garage sale: electronics, bikes, books.
+            </p>
+          </div>
+        </div>
+        <div className="text-right mt-2">
+          <Link
+            href="/feed"
+            className="text-blue-600 hover:underline font-medium"
+          >
+            See More →
+          </Link>
+        </div>
+      </section>
+
+      {/* Value Props */}
+      <section className="bg-gray-50 py-8 px-4">
+        <h2 className="text-xl font-bold mb-6 text-center">Why SaleTrail?</h2>
+        <div className="flex flex-wrap justify-center gap-8">
+          <div className="flex flex-col items-center max-w-xs">
+            <span className="text-3xl mb-2">📍</span>
+            <span className="font-semibold mb-1">Find sales near you</span>
+            <span className="text-gray-600 text-sm text-center">
+              See all local sales on a map or in a list.
+            </span>
+          </div>
+          <div className="flex flex-col items-center max-w-xs">
+            <span className="text-3xl mb-2">🧭</span>
+            <span className="font-semibold mb-1">Plan optimized routes</span>
+            <span className="text-gray-600 text-sm text-center">
+              Select sales and get the best driving route.
+            </span>
+          </div>
+          <div className="flex flex-col items-center max-w-xs">
+            <span className="text-3xl mb-2">🌦️</span>
+            <span className="font-semibold mb-1">Check the weather</span>
+            <span className="text-gray-600 text-sm text-center">
+              See the forecast before you go out.
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Community/Engagement Teaser */}
+      <section className="max-w-3xl mx-auto py-8 px-4 text-center">
+        <h2 className="text-lg font-bold mb-2">Coming Soon</h2>
+        <p className="mb-1">⭐ See what others are finding — Community</p>
+        <p>💰 Track your profits — Reseller Tools</p>
+      </section>
+
+      {/* Footer */}
+      <footer className="mt-auto py-6 bg-gray-100 text-center text-sm text-gray-600">
+        <div className="flex flex-wrap justify-center gap-6 mb-2">
+          <Link href="/about">About</Link>
+          <Link href="/about">FAQ</Link>
+          <a href="mailto:support@saletrail.app">Contact</a>
+          <a href="#">Privacy</a>
           <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href="https://github.com/kylewadektw-oss/SalesTrail"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
+            GitHub
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+        <div>© {new Date().getFullYear()} SaleTrail</div>
       </footer>
     </div>
   );
