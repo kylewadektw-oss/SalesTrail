@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import SaleCard from "@/components/SaleCard";
+import type { UxSale } from "@/lib/types";
 
 // Simple preset of supported cities with coordinates for weather lookup
 const CITY_PRESETS: Record<string, { label: string; lat: number; lon: number }>
@@ -13,7 +14,7 @@ const CITY_PRESETS: Record<string, { label: string; lat: number; lon: number }>
   };
 
 export default function Home() {
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<UxSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState<keyof typeof CITY_PRESETS>("hartford");
@@ -30,7 +31,7 @@ export default function Home() {
         setLoading(true);
         setError(null);
 
-        let data: any[] | null = null;
+        let data: UxSale[] | null = null;
         if (useUnified) {
           const res = await fetch(`/api/rss-cached?unified=true`, { cache: 'no-store' });
           if (res.ok) {
@@ -57,8 +58,9 @@ export default function Home() {
 
         if (!Array.isArray(data)) throw new Error("No sales found");
         setSales(data);
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        setError(msg);
         setSales([]);
       } finally {
         setLoading(false);
@@ -76,7 +78,7 @@ export default function Home() {
         const res = await fetch(url);
         if (!res.ok) return setWeather(undefined);
         const data = await res.json();
-        const d = data?.daily;
+        const d = data?.daily as { temperature_2m_max?: number[]; temperature_2m_min?: number[]; precipitation_probability_max?: number[] } | undefined;
         if (d && d.temperature_2m_max?.[0] != null && d.temperature_2m_min?.[0] != null) {
           const hi = Math.round(d.temperature_2m_max[0]);
           const lo = Math.round(d.temperature_2m_min[0]);
@@ -160,15 +162,15 @@ export default function Home() {
         {loading && <div className="text-gray-500">Loading sales...</div>}
         {error && <div className="text-red-600">{error}</div>}
         <div className="grid gap-4 md:grid-cols-3">
-          {sales.slice(0, 3).map((sale: any, i: number) => (
+          {sales.slice(0, 3).map((sale, i) => (
             <SaleCard
               key={i}
               sale={{
                 id: i.toString(),
-                title: sale.title,
-                description: sale.description,
-                url: sale.url || sale.link,
-                start_date: sale.pubDate,
+                title: sale.title || '',
+                description: sale.description || '',
+                url: sale.url || sale.link || '#',
+                start_date: sale.pubDate ?? '',
               }}
               weather={weather}
             />

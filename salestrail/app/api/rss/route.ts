@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { parseStringPromise } from "xml2js";
+import type { RawRssItem, CitySale } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -26,11 +27,11 @@ export async function GET(req: NextRequest) {
         "Sec-Fetch-Site": "cross-site",
         "Upgrade-Insecure-Requests": "1",
       },
-      redirect: 'follow',
+      redirect: "follow",
     });
 
     if (!rssRes.ok) {
-      const body = await rssRes.text().catch(() => '');
+      const body = await rssRes.text().catch(() => "");
       const snippet = body?.slice(0, 300);
       return new Response(
         JSON.stringify({ error: "Upstream fetch failed", status: rssRes.status, snippet }),
@@ -39,10 +40,10 @@ export async function GET(req: NextRequest) {
     }
 
     const xml = await rssRes.text();
-    let parsed: any;
+    let parsed: { rss?: { channel?: { item?: RawRssItem | RawRssItem[] } } } | undefined;
     try {
       parsed = await parseStringPromise(xml, { explicitArray: false });
-    } catch (err) {
+    } catch {
       return new Response(JSON.stringify({ error: "Failed to parse RSS XML" }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
@@ -51,21 +52,23 @@ export async function GET(req: NextRequest) {
 
     const items = parsed?.rss?.channel?.item || [];
     const arr = Array.isArray(items) ? items : [items];
-    const sales = arr
+    const sales: CitySale[] = arr
       .filter(Boolean)
-      .map((item: any) => ({
-        title: item.title,
-        description: item.description,
-        link: item.link,
-        pubDate: item.pubDate,
-      }));
+      .map((item) => ({
+        title: item?.title ?? "",
+        description: item?.description,
+        link: item?.link ?? "",
+        pubDate: item?.pubDate,
+      }))
+      .filter((s) => s.title && s.link);
 
     return new Response(JSON.stringify(sales), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

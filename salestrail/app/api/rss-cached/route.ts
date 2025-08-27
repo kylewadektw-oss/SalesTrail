@@ -3,6 +3,7 @@ import { parseStringPromise } from "xml2js";
 import { getCachedRSS, cacheRSS } from "@/lib/rssCache";
 import { getUnifiedSales, fetchUnifiedLive } from "@/lib/rssFetcher";
 import { SUPABASE_ENABLED } from "@/lib/supabaseServerClient";
+import type { RawRssItem, CitySale } from "@/lib/types";
 
 const TTL_SECONDS = 60 * 30; // 30 minutes
 const ALLOWED = (process.env.NEXT_PUBLIC_ALLOWED_CITIES || 'hartford,newyork,boston,providence')
@@ -17,8 +18,9 @@ export async function GET(req: NextRequest) {
     try {
       const sales = SUPABASE_ENABLED ? await getUnifiedSales() : await fetchUnifiedLive();
       return new Response(JSON.stringify(sales), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    } catch (e: any) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -45,44 +47,45 @@ export async function GET(req: NextRequest) {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-          "Accept": "application/rss+xml,application/xml",
+          Accept: "application/rss+xml,application/xml",
           "Accept-Language": "en-US,en;q=0.9",
-          "Referer": "https://www.google.com/",
+          Referer: "https://www.google.com/",
         },
       });
       if (!rssRes.ok) throw new Error(`Upstream ${rssRes.status}`);
       const xml = await rssRes.text();
-      const parsed = await parseStringPromise(xml, { explicitArray: false });
+      const parsed: { rss?: { channel?: { item?: RawRssItem | RawRssItem[] } } } = await parseStringPromise(xml, { explicitArray: false });
       const items = parsed?.rss?.channel?.item || [];
       const arr = Array.isArray(items) ? items : [items];
-      const sales = arr.filter(Boolean).map((item: any) => ({
-        title: item.title,
-        description: item.description,
-        link: item.link,
-        pubDate: item.pubDate,
-      }));
+      const sales: CitySale[] = arr.filter(Boolean).map((item) => ({
+        title: item?.title ?? '',
+        description: item?.description,
+        link: item?.link ?? '',
+        pubDate: item?.pubDate,
+      })).filter(s => s.title && s.link);
 
       await cacheRSS(cacheKey, sales);
       return new Response(JSON.stringify(sales), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
-    } catch (directErr) {
+    } catch {
       // 3) Proxy fallback(s)
       let proxied = await fetch(`${proxyBase}/rss?url=${encodeURIComponent(url)}`);
       if (!proxied.ok && proxyBase2) {
         proxied = await fetch(`${proxyBase2}/rss?url=${encodeURIComponent(url)}`);
       }
       if (!proxied.ok) throw new Error(`Proxy failed ${proxied.status}`);
-      const sales = await proxied.json();
+      const sales: CitySale[] = await proxied.json();
       await cacheRSS(cacheKey, sales);
       return new Response(JSON.stringify(sales), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

@@ -1,41 +1,45 @@
 import { parseStringPromise } from "xml2js";
 import { supabaseAdmin, SUPABASE_ENABLED } from "@/lib/supabaseServerClient";
 import { RSS_FEEDS } from "./rssSources";
+import type { RawRssItem, UnifiedSale } from "@/lib/types";
 
 async function fetchRSS(url: string) {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-      "Accept": "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
+      Accept: "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
-      "Referer": "https://www.google.com/",
+      Referer: "https://www.google.com/",
     },
   });
   if (!res.ok) throw new Error(`Failed to fetch RSS: ${res.status}`);
   const xml = await res.text();
-  const parsed = await parseStringPromise(xml, { explicitArray: false });
+  const parsed: { rss?: { channel?: { item?: RawRssItem | RawRssItem[] } } } = await parseStringPromise(xml, { explicitArray: false });
   return parsed?.rss?.channel?.item ?? [];
 }
 
-export async function fetchUnifiedLive() {
-  const results: any[] = [];
+export async function fetchUnifiedLive(): Promise<UnifiedSale[]> {
+  const results: UnifiedSale[] = [];
   await Promise.all(
     RSS_FEEDS.map(async (feed) => {
       try {
         const items = await fetchRSS(feed.url);
         const arr = Array.isArray(items) ? items : [items];
-        const normalized = arr.filter(Boolean).map((item: any, i: number) => ({
-          id: `${feed.key}-${i}`,
-          title: item.title,
-          description: item.description || "",
-          url: item.link,
-          pubDate: item.pubDate || item["dc:date"] || null,
-          source: feed.source,
-          location: feed.location,
-        }));
+        const normalized: UnifiedSale[] = arr
+          .filter(Boolean)
+          .map((item, i: number) => ({
+            id: `${feed.key}-${i}`,
+            title: item?.title ?? "",
+            description: item?.description || "",
+            url: item?.link ?? "",
+            pubDate: (item?.pubDate || (item as RawRssItem)["dc:date"]) ?? null,
+            source: feed.source,
+            location: feed.location,
+          }))
+          .filter((s) => s.title && s.url);
         results.push(...normalized);
-      } catch (e) {
+      } catch {
         // ignore individual feed failures
       }
     })
@@ -55,15 +59,18 @@ export async function updateRSSCache() {
       const items = await fetchRSS(feed.url);
       const arr = Array.isArray(items) ? items : [items];
 
-      const normalized = arr.filter(Boolean).map((item: any, i: number) => ({
-        id: `${feed.key}-${i}`,
-        title: item.title,
-        description: item.description || "",
-        url: item.link,
-        pubDate: item.pubDate || item["dc:date"] || null,
-        source: feed.source,
-        location: feed.location,
-      }));
+      const normalized: UnifiedSale[] = arr
+        .filter(Boolean)
+        .map((item, i: number) => ({
+          id: `${feed.key}-${i}`,
+          title: item?.title ?? "",
+          description: item?.description || "",
+          url: item?.link ?? "",
+          pubDate: (item?.pubDate || (item as RawRssItem)["dc:date"]) ?? null,
+          source: feed.source,
+          location: feed.location,
+        }))
+        .filter((s) => s.title && s.url);
 
       await supabaseAdmin.from("rss_cache").upsert(
         {
@@ -82,8 +89,8 @@ export async function updateRSSCache() {
   }
 }
 
-export async function getUnifiedSales() {
-  if (!SUPABASE_ENABLED) return [] as any[];
+export async function getUnifiedSales(): Promise<UnifiedSale[]> {
+  if (!SUPABASE_ENABLED) return [];
 
   const { data, error } = await supabaseAdmin
     .from("rss_cache")
@@ -91,10 +98,10 @@ export async function getUnifiedSales() {
 
   if (error) throw error;
 
-  let allSales: any[] = [];
+  let allSales: UnifiedSale[] = [];
   for (const row of data || []) {
     try {
-      const parsed = JSON.parse((row as any).payload);
+      const parsed = JSON.parse((row as { payload: string }).payload) as UnifiedSale[];
       allSales = allSales.concat(parsed);
     } catch {}
   }

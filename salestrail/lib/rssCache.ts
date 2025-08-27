@@ -15,17 +15,17 @@ export async function getCachedRSS(key: string, ttlSeconds: number) {
   }
   if (!data) return null
 
-  const ageSec = (Date.now() - new Date(data.updated_at as unknown as string).getTime()) / 1000
+  const ageSec = (Date.now() - new Date((data as { updated_at: string }).updated_at).getTime()) / 1000
   if (ageSec > ttlSeconds) return null
 
   try {
-    return JSON.parse(data.payload as unknown as string)
+    return JSON.parse((data as { payload: string }).payload)
   } catch {
     return null
   }
 }
 
-export async function cacheRSS(key: string, payload: any) {
+export async function cacheRSS(key: string, payload: unknown) {
   if (!SUPABASE_ENABLED) return
   const { error } = await supabaseAdmin
     .from('rss_cache')

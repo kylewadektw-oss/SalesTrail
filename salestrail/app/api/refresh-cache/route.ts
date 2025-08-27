@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { parseStringPromise } from 'xml2js'
 import { cacheRSS } from '@/lib/rssCache'
 import { updateRSSCache } from '@/lib/rssFetcher'
+import type { RawRssItem, CitySale } from '@/lib/types'
 
 const ALLOWED = (process.env.NEXT_PUBLIC_ALLOWED_CITIES || 'hartford,newyork,boston,providence')
   .split(',')
@@ -34,18 +35,19 @@ export async function POST(req: NextRequest) {
       })
       if (!rssRes.ok) throw new Error(`Fetch failed ${rssRes.status}`)
       const xml = await rssRes.text()
-      const parsed = await parseStringPromise(xml, { explicitArray: false })
+      const parsed: { rss?: { channel?: { item?: RawRssItem | RawRssItem[] } } } = await parseStringPromise(xml, { explicitArray: false })
       const items = parsed?.rss?.channel?.item || []
-      const sales = (Array.isArray(items) ? items : [items]).filter(Boolean).map((item: any) => ({
-        title: item.title,
-        description: item.description,
-        link: item.link,
-        pubDate: item.pubDate,
-      }))
+      const sales: CitySale[] = (Array.isArray(items) ? items : [items]).filter(Boolean).map((item) => ({
+        title: item?.title ?? '',
+        description: item?.description,
+        link: item?.link ?? '',
+        pubDate: item?.pubDate,
+      })).filter(s => s.title && s.link)
       await cacheRSS(`rss:${city}`, sales)
       results[city] = { ok: true, count: sales.length }
-    } catch (e: any) {
-      results[city] = { ok: false, error: e.message }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error'
+      results[city] = { ok: false, error: msg }
     }
   }))
 
@@ -63,7 +65,8 @@ export async function GET(req: NextRequest) {
     // Retain any existing city warming (noop if removed elsewhere), then multi-source
     await updateRSSCache()
     return new Response(JSON.stringify({ ok: true }), { status: 200 })
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Unknown error'
+    return new Response(JSON.stringify({ error: msg }), { status: 500 })
   }
 }
