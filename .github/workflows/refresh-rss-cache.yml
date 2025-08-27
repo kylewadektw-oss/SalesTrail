@@ -8,8 +8,33 @@ on:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    env:
+      # Prefer Secrets; fall back to Repository Variables if set
+      APP_BASE_URL_SECRET: ${{ secrets.APP_BASE_URL }}
+      APP_BASE_URL_VAR: ${{ vars.APP_BASE_URL }}
+      RSS_CITIES_SECRET: ${{ secrets.RSS_CITIES }}
+      RSS_CITIES_VAR: ${{ vars.RSS_CITIES }}
+      BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
+      - name: Resolve config
+        run: |
+          set -euo pipefail
+          BASE_URL="${APP_BASE_URL_SECRET:-}"
+          if [ -z "$BASE_URL" ]; then BASE_URL="${APP_BASE_URL_VAR:-}"; fi
+          if [ -z "$BASE_URL" ]; then echo "APP_BASE_URL not set (secret or variable)."; exit 1; fi
+
+          CITIES="${RSS_CITIES_SECRET:-}"
+          if [ -z "$CITIES" ]; then CITIES="${RSS_CITIES_VAR:-}"; fi
+          if [ -z "$CITIES" ]; then CITIES="hartford"; fi
+
+          if [ -z "${BYPASS:-}" ]; then echo "VERCEL_AUTOMATION_BYPASS_SECRET not set."; exit 1; fi
+
+          echo "BASE_URL=$BASE_URL" >> "$GITHUB_ENV"
+          echo "CITIES=$CITIES" >> "$GITHUB_ENV"
       - name: Call refresh endpoint
         run: |
-          curl -sS -X POST "${{ secrets.APP_BASE_URL }}/api/refresh-cache?cities=${{ secrets.RSS_CITIES }}&secret=${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" \
-          -H "x-api-key: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" | jq .
+          set -euo pipefail
+          # Do not echo secrets or full URL
+          echo "POST /api/refresh-cache (base=${BASE_URL}, cities=${CITIES})"
+          curl -sS -X POST "${BASE_URL}/api/refresh-cache?cities=${CITIES}&secret=${BYPASS}" \
+            -H "x-api-key: ${BYPASS}" | sed -e 's/\r$//' || true
