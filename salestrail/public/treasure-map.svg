@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Treasure map with several X marks</title>
+  <desc id="desc">A stylized parchment map with a dashed path and multiple X marks indicating spots.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f6e7c1"/>
+      <stop offset="100%" stop-color="#e9d3a4"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.05"/>
+      </feComponentTransfer>
+      <feComposite operator="in" in2="SourceAlpha"/>
+    </filter>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M60 0 H0 V60" fill="none" stroke="#d7c7a0" stroke-width="1"/>
+    </pattern>
+    <style>
+      .edge { fill: none; stroke: #c1a575; stroke-width: 12; stroke-linecap: round; }
+      .coast { fill: none; stroke: #b8925f; stroke-width: 3; stroke-linecap: round; }
+      .path { fill: none; stroke: #7b3f00; stroke-width: 4; stroke-dasharray: 10 12; stroke-linecap: round; }
+      .x { stroke: #c1121f; stroke-width: 8; stroke-linecap: round; }
+      .marker { fill: #2a9d8f; opacity: 0.9; }
+      .label { fill: #5b4636; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial; font-size: 20px; }
+    </style>
+  </defs>
+
+  <!-- Parchment background -->
+  <rect x="0" y="0" width="1200" height="800" fill="url(#paper)"/>
+  <rect x="18" y="18" width="1164" height="764" fill="none" stroke="#bfa06a" stroke-width="3" stroke-dasharray="4 10"/>
+  <rect x="0" y="0" width="1200" height="800" filter="url(#grain)" opacity="0.25"/>
+
+  <!-- Subtle grid -->
+  <rect x="0" y="0" width="1200" height="800" fill="url(#grid)" opacity="0.25"/>
+
+  <!-- Coastlines / contours -->
+  <path class="coast" d="M100,200 C220,120 380,140 520,220 S820,360 1000,260"/>
+  <path class="coast" d="M150,500 C300,420 480,460 650,520 S920,600 1100,520" opacity="0.8"/>
+
+  <!-- Dashed treasure path -->
+  <path class="path" d="M120,680 C240,620 320,560 380,480 S520,340 640,360 780,440 860,420 980,360 1060,260"/>
+
+  <!-- Waypoint markers -->
+  <circle class="marker" cx="120" cy="680" r="10"/>
+  <circle class="marker" cx="380" cy="480" r="8"/>
+  <circle class="marker" cx="640" cy="360" r="8"/>
+  <circle class="marker" cx="860" cy="420" r="8"/>
+
+  <!-- X marks -->
+  <g transform="translate(310,560)">
+    <line class="x" x1="-16" y1="-16" x2="16" y2="16"/>
+    <line class="x" x1="-16" y1="16" x2="16" y2="-16"/>
+  </g>
+  <g transform="translate(660,330)">
+    <line class="x" x1="-16" y1="-16" x2="16" y2="16"/>
+    <line class="x" x1="-16" y1="16" x2="16" y2="-16"/>
+  </g>
+  <g transform="translate(900,400)">
+    <line class="x" x1="-16" y1="-16" x2="16" y2="16"/>
+    <line class="x" x1="-16" y1="16" x2="16" y2="-16"/>
+  </g>
+  <g transform="translate(1060,260)">
+    <line class="x" x1="-16" y1="-16" x2="16" y2="16"/>
+    <line class="x" x1="-16" y1="16" x2="16" y2="-16"/>
+  </g>
+
+  <!-- Labels -->
+  <text class="label" x="95" y="715">Start</text>
+  <text class="label" x="1080" y="250">X marks the spot</text>
+</svg>

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       const url = `https://${city}.craigslist.org/search/gms?format=rss`
       const rssRes = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; SaleTrailBot/1.0; +https://saletrail.app)',
+          'User-Agent': 'Mozilla/5.0 (compatible; SalesTrailBot/1.0; +https://salestrail.app)',
           'Accept': 'application/rss+xml,application/xml',
         },
       })

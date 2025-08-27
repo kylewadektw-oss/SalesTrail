@@ -11,13 +11,34 @@ const ALLOWED = (process.env.NEXT_PUBLIC_ALLOWED_CITIES || 'hartford,newyork,bos
   .map(c => c.trim().toLowerCase())
   .filter(Boolean);
 
+function normalizeZip(zip?: string | null) {
+  if (!zip) return null;
+  const m = zip.match(/\d{5}/);
+  return m ? m[0] : null;
+}
+
+function textForItem(item: any) {
+  const parts = [item?.title, item?.description, item?.link, item?.url, item?.location];
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+
+function filterByZip<T = any>(items: T[], zip?: string | null): T[] {
+  const z5 = normalizeZip(zip);
+  if (!z5) return items;
+  const re = new RegExp(`(?:^|\\D)${z5}(?:-\\d{4})?(?=\\D|$)`);
+  return items.filter((it: any) => re.test(textForItem(it)));
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const unified = searchParams.get('unified');
+  const zip = searchParams.get('zip');
+
   if (unified === 'true') {
     try {
       const sales = SUPABASE_ENABLED ? await getUnifiedSales() : await fetchUnifiedLive();
-      return new Response(JSON.stringify(sales), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      const filtered = filterByZip(sales as any[], zip);
+      return new Response(JSON.stringify(filtered), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { 'Content-Type': 'application/json' } });
@@ -35,7 +56,8 @@ export async function GET(req: NextRequest) {
     // 1) Try cache
     const cached = await getCachedRSS(cacheKey, TTL_SECONDS);
     if (cached) {
-      return new Response(JSON.stringify(cached), {
+      const filtered = filterByZip(cached as any[], zip);
+      return new Response(JSON.stringify(filtered), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -65,7 +87,8 @@ export async function GET(req: NextRequest) {
       })).filter(s => s.title && s.link);
 
       await cacheRSS(cacheKey, sales);
-      return new Response(JSON.stringify(sales), {
+      const filtered = filterByZip(sales as any[], zip);
+      return new Response(JSON.stringify(filtered), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -78,7 +101,8 @@ export async function GET(req: NextRequest) {
       if (!proxied.ok) throw new Error(`Proxy failed ${proxied.status}`);
       const sales: CitySale[] = await proxied.json();
       await cacheRSS(cacheKey, sales);
-      return new Response(JSON.stringify(sales), {
+      const filtered = filterByZip(sales as any[], zip);
+      return new Response(JSON.stringify(filtered), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });

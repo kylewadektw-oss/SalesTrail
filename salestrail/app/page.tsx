@@ -1,6 +1,6 @@
 'use client';
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SaleCard from "@/components/SaleCard";
 import type { UxSale } from "@/lib/types";
 
@@ -18,8 +18,16 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState<keyof typeof CITY_PRESETS>("hartford");
-  const [weather, setWeather] = useState<string | undefined>(undefined);
+  // Replace single-line weather with a 5-day forecast array
+  const [forecast, setForecast] = useState<Array<{ date: string; label: string; hi: number; lo: number; code: number }>>([]);
   const [useUnified, setUseUnified] = useState(false);
+
+  // Date range for forecast display
+  const toISO = (d: Date) => d.toISOString().slice(0, 10);
+  const defaultStart = toISO(new Date());
+  const defaultEnd = toISO(new Date(Date.now() + 4 * 24 * 60 * 60 * 1000));
+  const [startDate, setStartDate] = useState<string>(defaultStart);
+  const [endDate, setEndDate] = useState<string>(defaultEnd);
 
   // Prefer env-based proxy URL for production; fall back to localhost for dev
   const proxyBase = process.env.NEXT_PUBLIC_PROXY_BASE_URL || "http://localhost:4000";
@@ -73,34 +81,68 @@ export default function Home() {
     async function fetchWeather() {
       try {
         const coords = CITY_PRESETS[city];
-        if (!coords) return setWeather(undefined);
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=1&temperature_unit=fahrenheit&timezone=auto`;
+        if (!coords) return setForecast([]);
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&forecast_days=10&temperature_unit=fahrenheit&timezone=auto`;
         const res = await fetch(url);
-        if (!res.ok) return setWeather(undefined);
+        if (!res.ok) return setForecast([]);
         const data = await res.json();
-        const d = data?.daily as { temperature_2m_max?: number[]; temperature_2m_min?: number[]; precipitation_probability_max?: number[] } | undefined;
-        if (d && d.temperature_2m_max?.[0] != null && d.temperature_2m_min?.[0] != null) {
-          const hi = Math.round(d.temperature_2m_max[0]);
-          const lo = Math.round(d.temperature_2m_min[0]);
-          const precip = d.precipitation_probability_max?.[0];
-          setWeather(`Today: ${hi}°F / ${lo}°F${precip != null ? `, precip ${precip}%` : ''}`);
-        } else {
-          setWeather(undefined);
-        }
+        const times: string[] = data?.daily?.time || [];
+        const tmax: number[] = data?.daily?.temperature_2m_max || [];
+        const tmin: number[] = data?.daily?.temperature_2m_min || [];
+        const codes: number[] = data?.daily?.weathercode || [];
+        const days = times.map((iso: string, i: number) => {
+          const d = new Date(iso);
+          const label = d.toLocaleDateString(undefined, { weekday: 'short' });
+          return {
+            date: iso,
+            label,
+            hi: Math.round(tmax[i] ?? 0),
+            lo: Math.round(tmin[i] ?? 0),
+            code: Number(codes[i] ?? 0),
+          };
+        });
+        setForecast(days);
       } catch {
-        setWeather(undefined);
+        setForecast([]);
       }
     }
     fetchWeather();
   }, [city]);
 
+  const minDate = forecast[0]?.date || startDate;
+  const maxDate = forecast[forecast.length - 1]?.date || endDate;
+
+  const displayForecast = useMemo(() => {
+    return forecast.filter((f) => (!startDate || f.date >= startDate) && (!endDate || f.date <= endDate));
+  }, [forecast, startDate, endDate]);
+
+  function weatherIcon(code: number): { glyph: string; label: string } {
+    // Open-Meteo weathercode mapping (simplified)
+    if ([0].includes(code)) return { glyph: '☀️', label: 'Clear' };
+    if ([1, 2].includes(code)) return { glyph: '🌤️', label: 'Mostly clear' };
+    if ([3].includes(code)) return { glyph: '☁️', label: 'Cloudy' };
+    if ([45, 48].includes(code)) return { glyph: '🌫️', label: 'Foggy' };
+    if ([51, 53, 55, 56, 57].includes(code)) return { glyph: '🌦️', label: 'Drizzle' };
+    if ([61, 63, 65, 66, 67].includes(code)) return { glyph: '🌧️', label: 'Rain' };
+    if ([71, 73, 75, 77].includes(code)) return { glyph: '❄️', label: 'Snow' };
+    if ([80, 81, 82].includes(code)) return { glyph: '🌧️', label: 'Showers' };
+    if ([95].includes(code)) return { glyph: '⛈️', label: 'Thunderstorm' };
+    if ([96, 99].includes(code)) return { glyph: '⛈️', label: 'Thunderstorm w/ hail' };
+    return { glyph: '🌤️', label: 'Partly cloudy' };
+  }
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-white">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-blue-100 py-12 px-4 text-center">
-        <h1 className="text-4xl font-bold mb-2">SaleTrail</h1>
-        <p className="text-xl mb-4">Find &amp; plan your weekend sales — faster.</p>
-        <p className="text-gray-600 mb-6">
+      <section
+        className="py-12 px-4 text-center"
+        style={{
+          background: "linear-gradient(135deg, var(--gradient-from), var(--gradient-to))",
+        }}
+      >
+        <h1 className="mb-2">SalesTrail</h1>
+        <p className="text-xl mb-4 text-[var(--foreground)]/90">Find &amp; plan your weekend sales — faster.</p>
+        <p className="text-[var(--foreground)]/75 mb-6 max-w-2xl mx-auto">
           Discover local yard, estate, and garage sales. Plan your route, check the
           weather, and never miss a deal!
         </p>
@@ -112,33 +154,68 @@ export default function Home() {
               id="city"
               value={city}
               onChange={(e) => setCity(e.target.value as keyof typeof CITY_PRESETS)}
-              className="px-3 py-2 border border-gray-300 rounded w-full md:w-auto"
+              className="input w-full md:w-auto"
               disabled={useUnified}
             >
               {Object.entries(CITY_PRESETS).map(([value, meta]) => (
                 <option key={value} value={value}>{meta.label}</option>
               ))}
             </select>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input type="checkbox" checked={useUnified} onChange={(e) => setUseUnified(e.target.checked)} />
               All providers
             </label>
           </div>
         </div>
+        {/* Date range controls */}
+        <div className="flex justify-center gap-2 max-w-xl mx-auto mb-4">
+          <input
+            type="date"
+            className="input"
+            aria-label="Start date"
+            value={startDate}
+            min={minDate}
+            max={maxDate}
+            onChange={(e) => {
+              const v = e.target.value;
+              setStartDate(v);
+              if (endDate < v) setEndDate(v);
+            }}
+          />
+          <input
+            type="date"
+            className="input"
+            aria-label="End date"
+            value={endDate}
+            min={startDate}
+            max={maxDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
         <form
           action="/feed"
           method="get"
-          className="flex justify-center gap-2 max-w-md mx-auto mb-4"
+          className="flex justify-center gap-2 max-w-xl mx-auto mb-4"
         >
           <input
             type="text"
             name="q"
             placeholder="Search by location or keyword..."
-            className="rounded-l px-4 py-2 border border-gray-300 w-2/3 focus:outline-blue-400"
+            className="input w-1/2"
+          />
+          <input
+            type="text"
+            name="zip"
+            inputMode="numeric"
+            pattern="\\d{5}(-\\d{4})?"
+            maxLength={10}
+            placeholder="ZIP"
+            aria-label="ZIP code"
+            className="input w-1/4"
           />
           <button
             type="submit"
-            className="rounded-r bg-blue-600 text-white px-4 py-2 font-semibold hover:bg-blue-700"
+            className="btn btn-primary"
           >
             Search
           </button>
@@ -146,7 +223,7 @@ export default function Home() {
         <div className="flex flex-wrap justify-center gap-4 mt-4">
           <Link
             href="/feed"
-            className="bg-blue-600 text-white px-5 py-2 rounded font-semibold hover:bg-blue-700"
+            className="btn btn-primary"
           >
             Browse Sales
           </Link>
@@ -155,11 +232,26 @@ export default function Home() {
 
       {/* Highlighted Sales (dynamic from RSS) */}
       <section className="max-w-3xl mx-auto py-10 px-4">
-        <h2 className="text-2xl font-bold mb-2">Upcoming Sales</h2>
-        {weather && (
-          <div className="text-sm text-gray-600 mb-4">{weather}</div>
+        <h2 className="mb-2">Upcoming Sales</h2>
+        {displayForecast.length > 0 && (
+          <div className="mb-5 overflow-x-auto">
+            <div className="flex gap-3 min-w-max">
+              {displayForecast.map((d, idx) => {
+                const ic = weatherIcon(d.code);
+                const md = new Date(d.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+                return (
+                  <div key={idx} className="card" style={{ width: 120 }}>
+                    <div className="text-sm text-muted mb-1">{d.label}</div>
+                    <div className="text-xs text-muted mb-1">{md}</div>
+                    <div className="text-3xl" aria-label={ic.label} title={ic.label}>{ic.glyph}</div>
+                    <div className="text-sm mt-1"><strong>{d.hi}°</strong> / {d.lo}°</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
-        {loading && <div className="text-gray-500">Loading sales...</div>}
+        {loading && <div className="text-muted">Loading sales...</div>}
         {error && <div className="text-red-600">{error}</div>}
         <div className="grid gap-4 md:grid-cols-3">
           {sales.slice(0, 3).map((sale, i) => (
@@ -172,14 +264,13 @@ export default function Home() {
                 url: sale.url || sale.link || '#',
                 start_date: sale.pubDate ?? '',
               }}
-              weather={weather}
             />
           ))}
         </div>
         <div className="text-right mt-2">
           <Link
             href="/feed"
-            className="text-blue-600 hover:underline font-medium"
+            className="text-[var(--primary)] hover:underline font-medium"
           >
             See More →
           </Link>
@@ -187,30 +278,46 @@ export default function Home() {
       </section>
 
       {/* Value Props */}
-      <section className="bg-gray-50 py-8 px-4">
-        <h2 className="text-xl font-bold mb-6 text-center">Why SaleTrail?</h2>
+      <section className="py-8 px-4" style={{ background: "var(--muted)" }}>
+        <h2 className="text-center mb-6">Why SalesTrail?</h2>
         <div className="flex flex-wrap justify-center gap-8">
-          <div className="flex flex-col items-center max-w-xs">
+          <div className="flex flex-col items-center max-w-xs card">
             <span className="text-3xl mb-2">📍</span>
             <span className="font-semibold mb-1">Find sales near you</span>
-            <span className="text-gray-600 text-sm text-center">
+            <span className="text-muted text-sm text-center">
               See all local sales on a map or in a list.
             </span>
           </div>
-          <div className="flex flex-col items-center max-w-xs">
+          <div className="flex flex-col items-center max-w-xs card">
             <span className="text-3xl mb-2">🧭</span>
             <span className="font-semibold mb-1">Plan optimized routes</span>
-            <span className="text-gray-600 text-sm text-center">
+            <span className="text-muted text-sm text-center">
               Select sales and get the best driving route.
             </span>
           </div>
-          <div className="flex flex-col items-center max-w-xs">
+          <div className="flex flex-col items-center max-w-xs card">
             <span className="text-3xl mb-2">🌦️</span>
             <span className="font-semibold mb-1">Check the weather</span>
-            <span className="text-gray-600 text-sm text-center">
+            <span className="text-muted text-sm text-center">
               See the forecast before you go out.
             </span>
           </div>
+        </div>
+      </section>
+
+      {/* Treasure Map Visual */}
+      <section className="max-w-5xl mx-auto py-10 px-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="mb-0">Plan your treasure hunt</h2>
+          <Link href="/map" className="btn btn-outline">Open map</Link>
+        </div>
+        <p className="text-muted mb-4">Spot clusters of sales and plan your route visually.</p>
+        <div className="card p-0 overflow-hidden">
+          <img
+            src="/treasure-map.svg"
+            alt="Treasure map with several X marks"
+            className="w-full h-auto"
+          />
         </div>
       </section>
 
@@ -222,11 +329,11 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-auto py-6 bg-gray-100 text-center text-sm text-gray-600">
+      <footer className="mt-auto py-6 text-center text-sm" style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
         <div className="flex flex-wrap justify-center gap-6 mb-2">
           <Link href="/about">About</Link>
           <Link href="/about">FAQ</Link>
-          <a href="mailto:support@saletrail.app">Contact</a>
+          <a href="mailto:support@salestrail.app">Contact</a>
           <a href="#">Privacy</a>
           <a
             href="https://github.com/kylewadektw-oss/SalesTrail"
@@ -236,7 +343,7 @@ export default function Home() {
             GitHub
           </a>
         </div>
-        <div>© {new Date().getFullYear()} SaleTrail</div>
+        <div>© {new Date().getFullYear()} SalesTrail</div>
       </footer>
     </div>
   );
