@@ -1,11 +1,14 @@
 import { NextRequest } from 'next/server'
 import { parseStringPromise } from 'xml2js'
 import { cacheRSS } from '@/lib/rssCache'
+import { updateRSSCache } from '@/lib/rssFetcher'
 
 const ALLOWED = (process.env.NEXT_PUBLIC_ALLOWED_CITIES || 'hartford,newyork,boston,providence')
   .split(',')
   .map(c => c.trim().toLowerCase())
   .filter(Boolean)
+
+const SECRET = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -49,4 +52,18 @@ export async function POST(req: NextRequest) {
   return new Response(JSON.stringify({ results }), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
 
-export const GET = POST // allow GET for manual testing
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const token = searchParams.get('token')
+  if (!SECRET || token !== SECRET) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+  }
+
+  try {
+    // Retain any existing city warming (noop if removed elsewhere), then multi-source
+    await updateRSSCache()
+    return new Response(JSON.stringify({ ok: true }), { status: 200 })
+  } catch (e: any) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500 })
+  }
+}

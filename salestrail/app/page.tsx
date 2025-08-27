@@ -18,24 +18,43 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState<keyof typeof CITY_PRESETS>("hartford");
   const [weather, setWeather] = useState<string | undefined>(undefined);
+  const [useUnified, setUseUnified] = useState(false);
 
   // Prefer env-based proxy URL for production; fall back to localhost for dev
   const proxyBase = process.env.NEXT_PUBLIC_PROXY_BASE_URL || "http://localhost:4000";
+  const proxyBase2 = process.env.NEXT_PUBLIC_PROXY_BASE_URL_2 || "";
 
   useEffect(() => {
     async function fetchSales() {
       try {
         setLoading(true);
         setError(null);
-        const rssUrl = encodeURIComponent(`https://${city}.craigslist.org/search/gms?format=rss`);
-        // 1) Prefer cached server API (uses Supabase cache)
-        let res = await fetch(`/api/rss-cached?city=${city}`);
-        if (!res.ok) {
-          // 2) Fallback to custom proxy base
-          res = await fetch(`${proxyBase}/rss?url=${rssUrl}`);
+
+        let data: any[] | null = null;
+        if (useUnified) {
+          const res = await fetch(`/api/rss-cached?unified=true`, { cache: 'no-store' });
+          if (res.ok) {
+            data = await res.json();
+          } else {
+            data = [];
+          }
+        } else {
+          const rssUrl = encodeURIComponent(`https://${city}.craigslist.org/search/gms?format=rss`);
+          // Try cached server API first; on any failure, fall back to proxies
+          try {
+            const res1 = await fetch(`/api/rss-cached?city=${city}`, { cache: 'no-store' });
+            if (!res1.ok) throw new Error(`cached api ${res1.status}`);
+            data = await res1.json();
+          } catch {
+            let res2 = await fetch(`${proxyBase}/rss?url=${rssUrl}`, { cache: 'no-store' });
+            if (!res2.ok && proxyBase2) {
+              res2 = await fetch(`${proxyBase2}/rss?url=${rssUrl}`, { cache: 'no-store' });
+            }
+            if (!res2.ok) throw new Error("Failed to fetch RSS (proxy fallback)");
+            data = await res2.json();
+          }
         }
-        if (!res.ok) throw new Error("Failed to fetch RSS");
-        const data = await res.json();
+
         if (!Array.isArray(data)) throw new Error("No sales found");
         setSales(data);
       } catch (e: any) {
@@ -46,7 +65,7 @@ export default function Home() {
       }
     }
     fetchSales();
-  }, [city, proxyBase]);
+  }, [city, proxyBase, proxyBase2, useUnified]);
 
   useEffect(() => {
     async function fetchWeather() {
@@ -84,18 +103,25 @@ export default function Home() {
           weather, and never miss a deal!
         </p>
         {/* City Picker */}
-        <div className="flex justify-center gap-2 max-w-md mx-auto mb-4">
-          <label className="sr-only" htmlFor="city">City</label>
-          <select
-            id="city"
-            value={city}
-            onChange={(e) => setCity(e.target.value as keyof typeof CITY_PRESETS)}
-            className="px-3 py-2 border border-gray-300 rounded w-full md:w-auto"
-          >
-            {Object.entries(CITY_PRESETS).map(([value, meta]) => (
-              <option key={value} value={value}>{meta.label}</option>
-            ))}
-          </select>
+        <div className="flex flex-col items-center gap-3 max-w-md mx-auto mb-4">
+          <div className="flex w-full gap-2 justify-center">
+            <label className="sr-only" htmlFor="city">City</label>
+            <select
+              id="city"
+              value={city}
+              onChange={(e) => setCity(e.target.value as keyof typeof CITY_PRESETS)}
+              className="px-3 py-2 border border-gray-300 rounded w-full md:w-auto"
+              disabled={useUnified}
+            >
+              {Object.entries(CITY_PRESETS).map(([value, meta]) => (
+                <option key={value} value={value}>{meta.label}</option>
+              ))}
+            </select>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={useUnified} onChange={(e) => setUseUnified(e.target.checked)} />
+              All providers
+            </label>
+          </div>
         </div>
         <form
           action="/feed"
@@ -141,7 +167,7 @@ export default function Home() {
                 id: i.toString(),
                 title: sale.title,
                 description: sale.description,
-                url: sale.link,
+                url: sale.url || sale.link,
                 start_date: sale.pubDate,
               }}
               weather={weather}

@@ -1,0 +1,15 @@
+name: Refresh RSS Cache
+
+on:
+  schedule:
+    - cron: '0 */3 * * *' # every 3 hours
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call refresh endpoint
+        run: |
+          curl -sS -X POST "${{ secrets.APP_BASE_URL }}/api/refresh-cache?cities=${{ secrets.RSS_CITIES }}&secret=${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" \
+          -H "x-api-key: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" | jq .

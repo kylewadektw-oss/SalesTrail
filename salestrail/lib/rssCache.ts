@@ -1,7 +1,8 @@
 import 'server-only'
-import { supabaseAdmin } from '@/lib/supabaseServerClient'
+import { supabaseAdmin, SUPABASE_ENABLED } from '@/lib/supabaseServerClient'
 
 export async function getCachedRSS(key: string, ttlSeconds: number) {
+  if (!SUPABASE_ENABLED) return null
   const { data, error } = await supabaseAdmin
     .from('rss_cache')
     .select('payload, updated_at')
@@ -25,6 +26,7 @@ export async function getCachedRSS(key: string, ttlSeconds: number) {
 }
 
 export async function cacheRSS(key: string, payload: any) {
+  if (!SUPABASE_ENABLED) return
   const { error } = await supabaseAdmin
     .from('rss_cache')
     .upsert({ key, payload: JSON.stringify(payload) }, { onConflict: 'key' })
