@@ -240,12 +240,18 @@ export default function RoutePlannerPage() {
             <div
               key={i}
               className="flex gap-2 items-center"
-              draggable
-              onDragStart={() => onDragStart(i)}
               onDragOver={onDragOver}
               onDrop={() => onDrop(i)}
             >
-              <span className="cursor-grab select-none" title="Drag to reorder">⋮⋮</span>
+              <span
+                className="cursor-grab select-none"
+                title="Drag to reorder"
+                draggable
+                onDragStart={() => onDragStart(i)}
+                onDragEnd={() => setDragIndex(null)}
+              >
+                ⋮⋮
+              </span>
               <input
                 className="input w-full"
                 placeholder={`Stop #${i + 1} (address or place)`}
